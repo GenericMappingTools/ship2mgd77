@@ -70,8 +70,8 @@ mag_fw=60 # sec
 mag_sample_interval=15 # sec
 g882_min_sigstrength=100
 
-gmtset FORMAT_CLOCK_IN hh:mm:ss.xxx
-gmtset FORMAT_CLOCK_OUT hh:mm:ss.xxx
+gmt set FORMAT_CLOCK_IN hh:mm:ss.xxx
+gmt set FORMAT_CLOCK_OUT hh:mm:ss.xxx
 
 # Create outputdatapath directory if not already there
 mkdir -p $outputdatapath
