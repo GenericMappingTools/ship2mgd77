@@ -1,5 +1,5 @@
 # ship2mgd77
-Tool for producing NEIC-compliant MGD77T files from shipboard data.
+Tool for producing NCEI-compliant MGD77T files from shipboard data.
 Michael T. Hamilton
 
 To build and install, cd into src and type "make all".
