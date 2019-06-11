@@ -12,7 +12,7 @@ directory.  You should either replace the ones in the GMT
 share/mgd77 directory with these or edit ship2mgd77.so to
 pass the full paths to the new ones via mgd77magref options
 
-	**-D**\ *path-to-Dst_all.wdc* **-E**\ *path-to-F107_mon.plt*
+	-Dpath-to-Dst_all.wdc -Epath-to-F107_mon.plt
 	
 For information about usage and test data, please visit
 http://www.soest.hawaii.edu/mgd77 and select Documentation.
