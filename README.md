@@ -14,5 +14,5 @@ pass the full paths to the new ones via mgd77magref options
 
 	-Dpath-to-Dst_all.wdc -Epath-to-F107_mon.plt
 	
-For information about usage and test data, please visit
+For information about usage and to download test data, please visit
 http://www.soest.hawaii.edu/mgd77 and select Documentation.
