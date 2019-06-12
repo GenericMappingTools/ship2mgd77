@@ -1,4 +1,4 @@
-#!/bin/sh 
+#!/bin/sh
 # Author: Michael Hamilton
 # June 2019
 #
@@ -477,4 +477,4 @@ if [ -s $orig.dat ]; then
    mv -f $orig.dat $outputdatapath
 fi
 
-#rm -f $temp.*
+rm -f $temp.*
