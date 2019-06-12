@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/sh 
 # Author: Michael Hamilton
 # June 2019
 #
@@ -17,7 +17,7 @@ fi
 
 # Digitizing method (0 retains all depths, mag/grav sampled at sample intervals specified below
 #                    1 retains all depths and resamples mag/grav to coincide with depth times)
-sample2depthtime=1
+sample2depthtime=0
 
 # Compute diurnal corrections if mag data are available
 compute_diurnal_correction=1
@@ -34,7 +34,7 @@ gravimeter="BELL AEROSPACE BGM-3"
 magnetometer="CESIUM MAG-GEOMETRICS G-882"
 
 # System specific variables (edit right hand side of these assignments)
-shipcode="."		# Path to directory where ship2mgd77_script.sh and udmerge and lopassvel binaries live
+shipcode="/Users/mith/Programs/GMTdev/ship2mgd77/bin"		# Path to directory where ship2mgd77_script.sh and udmerge and lopassvel binaries live
 underwaypath="km1609_day342"	# Path to directory with raw underway data
 outputdatapath="archive_data"	# Path to output directory with merged file
 
@@ -250,8 +250,8 @@ if [ -s $procdir/${id}_rgrav_mgal ]; then
     STIME=`gmt info $temp.tg.filt.samp -C --FORMAT_CLOCK_OUT=hh:mm:ss.xxx --FORMAT_FLOAT_OUT=%.3f --FORMAT_DATE_IN=yyyy:jjj | awk '{print $1}' | gmt convert -fo0t`
     ETIME=`gmt info $temp.tg.filt.samp -C --FORMAT_CLOCK_OUT=hh:mm:ss.xxx --FORMAT_FLOAT_OUT=%.3f --FORMAT_DATE_IN=yyyy:jjj | awk '{print $2}' | gmt convert -fo0t`
     if [ $sample2depthtime -eq 0 ]; then # Use grav_sample_interval
-        awk '{printf "%04d:%03dT%02d:%02d:%02d.%03d %10.9f %10.9f \n",$1,$2,$3,$4,$5,$6,$9,$8}' $procdir/${id}_pos-mv_clean | gmt convert --FORMAT_CLOCK_IN=hh:mm:ss.xxx --FORMAT_DATE_IN=yyyy:jjj -fi0T -fo0t --FORMAT_FLOAT_OUT=%.12f | awk '{if ($1>prev && ($1>=st && $1<=en)) print prev=$1,$2,$3}' st=$STIME en=$ETIME | gmt convert -fi0t -fo0T --FORMAT_DATE_OUT=yyyy:jjj --FORMAT_CLOCK_OUT=hh:mm:ss.xxx > $temp.txy
-        gmt sample1d $temp.txy -N$temp.tg.filt.samp -Fl -T0 --FORMAT_GEO_OUT=D --FORMAT_DATE_IN=yyyy:jjj -fo0t -f1x -f2y --FORMAT_FLOAT_OUT=%.12f | grep -v NaN > $temp.gnav.txy
+        awk '{printf "%04d:%03dT%02d:%02d:%02d.%03d %10.9f %10.9f \n",$1,$2,$3,$4,$5,$6,$9,$8}' $procdir/${id}_pos-mv_clean | gmt convert --FORMAT_CLOCK_IN=hh:mm:ss.xxx --FORMAT_DATE_IN=yyyy:jjj -fi0T -fo0t --FORMAT_FLOAT_OUT=%.12f | awk '{if ($1>prev && ($1>=st && $1<=en)) print prev=$1,$2,$3}' st=$STIME en=$ETIME > $temp.txy
+        gmt sample1d $temp.txy -N$temp.tg.filt.samp -Fl -T0 --FORMAT_GEO_OUT=D -fo0t -f1x -f2y --FORMAT_FLOAT_OUT=%.12f | grep -v NaN > $temp.gnav.txy
         STIME=`gmt info $temp.gnav.txy -fi0t -fo0T --FORMAT_DATE_OUT=yyyy:jjj --FORMAT_CLOCK_OUT=hh:mm:ss.xxx -C --FORMAT_FLOAT_OUT=%.12f | awk '{print $1}' | gmt convert -fo0t`
         ETIME=`gmt info $temp.gnav.txy -fi0t -fo0T --FORMAT_DATE_OUT=yyyy:jjj --FORMAT_CLOCK_OUT=hh:mm:ss.xxx -C --FORMAT_FLOAT_OUT=%.12f | awk '{print $2}' | gmt convert -fo0t`
         gmt convert $temp.tg.filt.samp -fi0t -fo0t | awk '($1>=st)&&($1<=en) {print $0}' st=$STIME en=$ETIME > $temp.tg.filt.d
@@ -477,4 +477,4 @@ if [ -s $orig.dat ]; then
    mv -f $orig.dat $outputdatapath
 fi
 
-rm -f $temp.*
+#rm -f $temp.*
