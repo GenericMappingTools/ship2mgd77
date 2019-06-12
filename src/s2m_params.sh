@@ -1,7 +1,7 @@
 # Settings for ship2mgd77.sh
 
 # System specific variables (edit right hand side of these assignments)
-shipcode="/Users/mith/Programs/GMTdev/ship2mgd77/bin" # Path to directory where ship2mgd77.sh and udmerge and lopassvel binaries live
+shipcode="shipcode" # Path to directory where ship2mgd77.sh and udmerge and lopassvel binaries live
 underwaypath="km1609_day342"    # Path to directory with raw underway data
 outputdatapath="archive_data"    # Path to output directory with merged file
 
