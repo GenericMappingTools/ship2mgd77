@@ -15,63 +15,11 @@ if [ $# -eq 0 ]; then	# If no arg given we bail with this message
 	exit 1
 fi
 
-# Digitizing method (0 retains all depths, mag/grav sampled at sample intervals specified below
-#                    1 retains all depths and resamples mag/grav to coincide with depth times)
-sample2depthtime=0
-
-# Compute diurnal corrections if mag data are available
-compute_diurnal_correction=1
-
-# Cruise specific variables (edit these)
-# Or: as in this script pull these values from inhouse tables (see below)
-chiefsci="UNSPECIFIED"
-port1="UNSPECIFIED"
-port2="UNSPECIFIED"
-vessel="KILO MOANA"
-sonar1="KONGSBERG EM122"
-sonar2="/EM710"
-gravimeter="BELL AEROSPACE BGM-3"
-magnetometer="CESIUM MAG-GEOMETRICS G-882"
-
-# System specific variables (edit right hand side of these assignments)
-shipcode="/Users/mith/Programs/GMTdev/ship2mgd77/bin"		# Path to directory where ship2mgd77_script.sh and udmerge and lopassvel binaries live
-underwaypath="km1609_day342"	# Path to directory with raw underway data
-outputdatapath="archive_data"	# Path to output directory with merged file
-
-
-digitize_interval="15"		# Magnetic and gravity digitization interval in output file (in sec)
-
-# Set whether nav should be filtered and length of nav filter width (seconds)
-filternav=0 # 1 activates nav filtering, 0 deactivates filtering
-filternav_fw=7
-
-# BGM3 constants (scale/bias are protected information - actual values differ)
-# Gravity values produced via these constants will not be valid.
-bgm3scale="5.07"
-bgm3bias="853500"
-bgm3grav_fw=360
-bgm3grav_sample_interval=15 # sec
-
-# G-882 cesium mag sensor depth constants
-# Warning: msd calculation will differ for other sensors
-# mag sensor depth = reported + reported * scale + bias
-m_scale=0.034881
-m_bias=3.84
-
-# Honolulu absolute gravity
-g_pier35alpha=978927.887
+source s2m_params.sh
 
 # Initialize nav filters for smoothing grav data
 gnav_fw=$bgm3grav_fw
 gnav_si=$bgm3grav_sample_interval
-
-# Mag constants
-mag_fw=60 # sec
-mag_sample_interval=15 # sec
-g882_min_sigstrength=100
-
-gmt set FORMAT_CLOCK_IN hh:mm:ss.xxx
-gmt set FORMAT_CLOCK_OUT hh:mm:ss.xxx
 
 # Create outputdatapath directory if not already there
 mkdir -p $outputdatapath
@@ -80,11 +28,9 @@ temp="/tmp/ship2mgd77.$$"
 id=$1
 orig=$1
 outid=`echo $id | awk '{print tolower($1)}'`
-ucid=`echo $id | awk '{print toupper($1)}'`
 
-year=`echo $id | sed -e 's/km//g' -e 's/KM//g' | awk '{printf "%.2s\n",$1}' | awk '{print $1+2000}'`
-vesselcode=`echo $outid | sed -E 's/[0-9]/ /g' | awk '{print $1}'`
 procdir="$underwaypath"
+
 # Additional code required for concatenating raw day files, not shown here
 
 # Function to create an empty MGD77 header
@@ -136,9 +82,9 @@ elif [ $lontype -eq 1 ]; then
 		geofmt="--FORMAT_GEO_OUT=+D"
 	fi
 fi
-echo "Lon type 0-360? $lontype Lon passes meridian discontinuity? $wrap Best internal format for avoiding bad nav interpolation? $geofmt"
+#echo "Lon type 0-360? $lontype Lon passes meridian discontinuity? $wrap Best internal format for avoiding bad nav interpolation? $geofmt"
 
-# Remove common errors from nav file (duplicates, zeros, lat/long out of range, speeds gt 15 knots)
+# Remove common errors from nav file (duplicates, zeros, lat/lon out of range, speeds gt 15 knots)
 # Note that most pos-mv files have 18 columns, but km0907, perhaps others, have just 9 columns
 awk '{if ($1 != 0 && ($1 <= 2099 && $1 > 1940) && ($2 <= 366 && $2 >= 0) && ($3 <= 23 && $3 >= 0) && ($4 <= 59 && $4 >= 0) && ($5 <= 59 && $5 >= 0) && ($6 <= 999 && $6 >= 0) && $8 != 0 && $9 != 0 && (NF == 18 || NF == 9) && ($8 >= -90 && $8 <= 90) && ($9 >= -180 && $9 <= 360)) printf "%.4d-%.3dT%.2d:%.2d:%.2d.%.3d %3.9f %3.9f\n",$1,$2,$3,$4,$5,$6,$8,($9+360)%360}' $procdir/${id}_pos-mv | gmt convert $geofmt -fi0T -fo0t -fi8x -fo8x --FORMAT_DATE_IN=yyyy-jjj --FORMAT_FLOAT_OUT=%.12f | awk '{if ($1>prev) print prev=$1,$2,$3}' > $temp.ship2mgd77_pos-mv.tmp
     navlen=`wc -l $temp.ship2mgd77_pos-mv.tmp | awk '{print $1}'`
@@ -150,9 +96,7 @@ fi
 
 # Smooth nav, or not 
 startt=`head -n 1 $temp.ship2mgd77_pos-mv.tmp2 | awk '{printf "%d\n",$1}'`
-head -n 1 $temp.ship2mgd77_pos-mv.tmp2 | awk '{printf "%d\n",$1}'
 endt=`tail -n 1 $temp.ship2mgd77_pos-mv.tmp2 | awk '{printf "%d\n",$1}'`
-tail -n 1 $temp.ship2mgd77_pos-mv.tmp2 | awk '{printf "%d\n",$1}'
 if [ $filternav -eq 1 ]; then
     gmt filter1d $temp.ship2mgd77_pos-mv.tmp2 -L$filternav_fw -T$startt/$endt/1 -Fg$filternav_fw --FORMAT_CLOCK_OUT=hh:mm:ss.xxx --FORMAT_FLOAT_OUT=%.12f -fi0t -fo0T --TIME_UNIT=s --FORMAT_DATE_OUT=yyyy:jjj | awk '{if ($4 > 0) print $0}' > $temp.pos-mv3
     gmt convert --FORMAT_GEO_OUT=D $temp.pos-mv3 --FORMAT_CLOCK_IN=hh:mm:ss.xxx --FORMAT_CLOCK_OUT=hh:mm:ss.xxx --FORMAT_FLOAT_OUT=%.12f -fi0T -fi2x -fo2x -fo0T --FORMAT_DATE_IN=yyyy:jjj --FORMAT_DATE_OUT=yyyy:jjj | sed -e 's/:/ /g' -e 's/T/ /g' | awk '{if ($1 != 0 && $6 != 0 && $7 != 0 && NF == 8 && ($6 >= -90 && $6 <= 90) && ($7 >= -180 && $7 <= 360)) printf "%.4d %.3d %.2d %.2d %06.3f *gps % 3.9f % 3.9f\n",$1,$2,$3,$4,$5,$6,$7}' | sed -e 's/./ /18' > $procdir/${id}_pos-mv_clean
@@ -189,7 +133,7 @@ for field in dpth magy bgm3grav; do # dpth must be first (syntax: dpth magy bgm3
             awk '{printf "%04d-%03dT%02d:%02d:%02d.%03d %10.9f %10.9f \n",$1,$2,$3,$4,$5,$6,$9,$8}' $procdir/${id}_pos-mv_clean | gmt convert --FORMAT_CLOCK_IN=hh:mm:ss.xxx --FORMAT_DATE_IN=yyyy-jjj -fi0T -fo0t --FORMAT_FLOAT_OUT=%.12f | awk '{if ($1>prev && ($1>=st && $1<=en)) print prev=$1,$2,$3}' st=$STIME en=$ETIME > $temp.txy
 
             # Trim in case the data extend beyond the navigation
-            gmt sample1d $temp.txy -N$temp.tdj.1 -Fl -T0 --FORMAT_GEO_OUT=D -f0t -f1x --FORMAT_FLOAT_OUT=%.12f | grep -v NaN > $temp.dnav.txy.1
+            gmt sample1d $temp.txy -T$temp.tdj.1 -Fl -N0 --FORMAT_GEO_OUT=D -f0t -f1x --FORMAT_FLOAT_OUT=%.12f | grep -v NaN > $temp.dnav.txy.1
             STIME=`gmt info $temp.dnav.txy.1 -C --FORMAT_FLOAT_OUT=%.12f | awk '{print $1}'`
             ETIME=`gmt info $temp.dnav.txy.1 -C --FORMAT_FLOAT_OUT=%.12f | awk '{print $2}'`
             awk '($1>=st)&&($1<=en) {print $0}' st=$STIME en=$ETIME  $temp.tdj.1 > $temp.tdj.d
@@ -251,7 +195,7 @@ if [ -s $procdir/${id}_rgrav_mgal ]; then
     ETIME=`gmt info $temp.tg.filt.samp -C --FORMAT_CLOCK_OUT=hh:mm:ss.xxx --FORMAT_FLOAT_OUT=%.3f --FORMAT_DATE_IN=yyyy:jjj | awk '{print $2}' | gmt convert -fo0t`
     if [ $sample2depthtime -eq 0 ]; then # Use grav_sample_interval
         awk '{printf "%04d:%03dT%02d:%02d:%02d.%03d %10.9f %10.9f \n",$1,$2,$3,$4,$5,$6,$9,$8}' $procdir/${id}_pos-mv_clean | gmt convert --FORMAT_CLOCK_IN=hh:mm:ss.xxx --FORMAT_DATE_IN=yyyy:jjj -fi0T -fo0t --FORMAT_FLOAT_OUT=%.12f | awk '{if ($1>prev && ($1>=st && $1<=en)) print prev=$1,$2,$3}' st=$STIME en=$ETIME > $temp.txy
-        gmt sample1d $temp.txy -N$temp.tg.filt.samp -Fl -T0 --FORMAT_GEO_OUT=D -fo0t -f1x -f2y --FORMAT_FLOAT_OUT=%.12f | grep -v NaN > $temp.gnav.txy
+        gmt sample1d $temp.txy -T$temp.tg.filt.samp -Fl -N0 --FORMAT_GEO_OUT=D -fo0t -f1x -f2y --FORMAT_FLOAT_OUT=%.12f | grep -v NaN > $temp.gnav.txy
         STIME=`gmt info $temp.gnav.txy -fi0t -fo0T --FORMAT_DATE_OUT=yyyy:jjj --FORMAT_CLOCK_OUT=hh:mm:ss.xxx -C --FORMAT_FLOAT_OUT=%.12f | awk '{print $1}' | gmt convert -fo0t`
         ETIME=`gmt info $temp.gnav.txy -fi0t -fo0T --FORMAT_DATE_OUT=yyyy:jjj --FORMAT_CLOCK_OUT=hh:mm:ss.xxx -C --FORMAT_FLOAT_OUT=%.12f | awk '{print $2}' | gmt convert -fo0t`
         gmt convert $temp.tg.filt.samp -fi0t -fo0t | awk '($1>=st)&&($1<=en) {print $0}' st=$STIME en=$ETIME > $temp.tg.filt.d
@@ -267,7 +211,7 @@ if [ -s $procdir/${id}_rgrav_mgal ]; then
         STIME=`gmt info $temp.dnav.txy -C --FORMAT_FLOAT_OUT=%.12f | awk '{print $1}'`
         ETIME=`gmt info $temp.dnav.txy -C --FORMAT_FLOAT_OUT=%.12f | awk '{print $2}'`
         gmt convert $temp.tg.filt.samp -fi0t -fo0t | awk '{if ($1>prev && ($1>=st && $1<=en)) print prev=$1,$2}' st=$STIME en=$ETIME > $temp.tg.filt.samp2
-        gmt sample1d $temp.tg.filt.samp2 -N$temp.dnav.txy -Fl -T0 -fi0t --FORMAT_FLOAT_OUT=%.12f | awk '($1>=st)&&($1<=en) {print $0}' st=$STIME en=$ETIME > $temp.tg.filt.samp3
+        gmt sample1d $temp.tg.filt.samp2 -T$temp.dnav.txy -Fl -N0 -fi0t --FORMAT_FLOAT_OUT=%.12f | awk '($1>=st)&&($1<=en) {print $0}' st=$STIME en=$ETIME > $temp.tg.filt.samp3
         len1=`wc -l $temp.dnav.txy | awk '{print $1}'`
         len2=`wc -l $temp.tg.filt.samp3 | awk '{print $1}'`
         if [[ ($len1 != $len2  && $len2 -ne 0) ]]; then
@@ -323,7 +267,7 @@ if [ -s $procdir/${id}_rmagy_smooth ]; then
     ETIME=`gmt info $temp.tm.filt.samp -C --FORMAT_DATE_IN=yyyy:jjj --FORMAT_DATE_OUT=yyyy:jjj --FORMAT_CLOCK_OUT=hh:mm:ss.xxx --FORMAT_FLOAT_OUT=%.12f -f0T | awk '{print $2}'`
     if [ $sample2depthtime -eq 0 ]; then # Use $mag_sample_interval 
         awk '{printf "%04d:%03dT%02d:%02d:%02d.%03d %10.9f %10.9f \n",$1,$2,$3,$4,$5,$6,$9,$8}' $procdir/${id}_pos-mv_clean | gmt convert --FORMAT_CLOCK_IN=hh:mm:ss.xxx --FORMAT_CLOCK_OUT=hh:mm:ss.xxx --FORMAT_DATE_IN=yyyy:jjj --FORMAT_DATE_OUT=yyyy:jjj -f0T --FORMAT_FLOAT_OUT=%.12f | awk '{if ($1>prev && ($1>=st && $1<=en)) print prev=$1,$2,$3}' st=$STIME en=$ETIME > $temp.txy
-        gmt sample1d $temp.txy -N$temp.tm.filt.samp -Fl -T0 --TIME_UNIT=s --FORMAT_GEO_OUT=D -f0T -f1x -f2y --FORMAT_FLOAT_OUT=%.12f --FORMAT_DATE_IN=yyyy:jjj --FORMAT_DATE_OUT=yyyy:jjj --FORMAT_CLOCK_OUT=hh:mm:ss.xxx | grep -v NaN > $temp.mnav.txy
+        gmt sample1d $temp.txy -T$temp.tm.filt.samp -Fl -N0 --TIME_UNIT=s --FORMAT_GEO_OUT=D -f0T -f1x -f2y --FORMAT_FLOAT_OUT=%.12f --FORMAT_DATE_IN=yyyy:jjj --FORMAT_DATE_OUT=yyyy:jjj --FORMAT_CLOCK_OUT=hh:mm:ss.xxx | grep -v NaN > $temp.mnav.txy
         STIME=`gmt info $temp.mnav.txy -C -f0T --FORMAT_FLOAT_OUT=%.12f --FORMAT_DATE_IN=yyyy:jjj --FORMAT_DATE_OUT=yyyy:jjj --FORMAT_CLOCK_OUT=hh:mm:ss.xxx | awk '{print $1}'`
         ETIME=`gmt info $temp.mnav.txy -C -f0T --FORMAT_FLOAT_OUT=%.12f --FORMAT_DATE_IN=yyyy:jjj --FORMAT_DATE_OUT=yyyy:jjj --FORMAT_CLOCK_OUT=hh:mm:ss.xxx | awk '{print $2}'`
         awk '($1>=st)&&($1<=en) {print $0}' st=$STIME en=$ETIME  $temp.tm.filt.samp  > $temp.tm.d
@@ -339,7 +283,7 @@ if [ -s $procdir/${id}_rmagy_smooth ]; then
         gmt convert -fi0t -fo0T --FORMAT_DATE_OUT=yyyy:jjj --FORMAT_CLOCK_OUT=hh:mm:ss.xxx --FORMAT_FLOAT_OUT=%.12f $temp.dnav.txy.1 | awk '{if ($1>prev && ($1>=st && $1<=en)) print prev=$1,$2,$3}' st=$STIME en=$ETIME > $temp.dnav.Txy
         STIME=`gmt info $temp.dnav.Txy -C --FORMAT_DATE_IN=yyyy:jjj --FORMAT_DATE_OUT=yyyy:jjj --FORMAT_CLOCK_OUT=hh:mm:ss.xxx --FORMAT_FLOAT_OUT=%.12f -f0T | awk '{print $1}'`
         ETIME=`gmt info $temp.dnav.Txy -C --FORMAT_DATE_IN=yyyy:jjj --FORMAT_DATE_OUT=yyyy:jjj --FORMAT_CLOCK_OUT=hh:mm:ss.xxx --FORMAT_FLOAT_OUT=%.12f -f0T | awk '{print $2}'`
-        gmt sample1d $temp.tm.filt.samp -N$temp.dnav.Txy -Fl -T0 -f0T --FORMAT_FLOAT_OUT=%.3f --FORMAT_DATE_IN=yyyy:jjj --FORMAT_DATE_OUT=yyyy:jjj --FORMAT_CLOCK_OUT=hh:mm:ss.xxx | awk '($1>=st)&&($1<=en) {print $0}' st=$STIME en=$ETIME > $temp.tm.filt.samp2
+        gmt sample1d $temp.tm.filt.samp -T$temp.dnav.Txy -Fl -N0 -f0T --FORMAT_FLOAT_OUT=%.3f --FORMAT_DATE_IN=yyyy:jjj --FORMAT_DATE_OUT=yyyy:jjj --FORMAT_CLOCK_OUT=hh:mm:ss.xxx | awk '($1>=st)&&($1<=en) {print $0}' st=$STIME en=$ETIME > $temp.tm.filt.samp2
         len1=`wc -l $temp.dnav.Txy | awk '{print $1}'`
         len2=`wc -l $temp.tm.filt.samp2 | awk '{print $1}'`
         if [ $len1 != $len2 ]  && [ $len2 -ne 0 ]; then
@@ -405,52 +349,42 @@ $shipcode/udmerge -i $id $nav $dpth $mag $grav | awk '{if ($8 != "nan" && $9 != 
 
 # MGD77 header (check for h77 file in $dpath/h77 or use dummy)
 # Create a custom header items file for mgd77header -H option
-echo "Survey_Identifier $id" > $temp.hdrpar.txt
+echo "Survey_Identifier ${id:0:7}" > $temp.hdrpar.txt
+echo "Platform_Type_Code 1" >> $temp.hdrpar.txt
+echo "Platform_Type SHIP" >> $temp.hdrpar.txt
+echo "Country ${country:0:17}" >> $temp.hdrpar.txt
+echo "Source_Institution ${source_institution:0:38}" >> $temp.hdrpar.txt
+echo "Funding ${funder:0:19}" >> $temp.hdrpar.txt
+echo "Chief_Scientist ${chiefsci:0:31}" >> $temp.hdrpar.txt
+echo "Platform_Name ${vessel:0:20}" >> $temp.hdrpar.txt
+echo "Project_Cruise_Leg ${project_cruise_leg:0:57}" >> $temp.hdrpar.txt
+echo "Port_of_Departure ${port1:0:31}" >> $temp.hdrpar.txt
+echo "Port_of_Arrival ${port2:0:29}" >> $temp.hdrpar.txt
+echo "Data_Center_File_Number ${outid:0:7}" >> $temp.hdrpar.txt # cruise id as temp data center number
+echo "Navigation_Instrumentation ${navinstr:0:39}" >> $temp.hdrpar.txt
+sonarinstr="$sonar1$sonar2"
+echo "Bathymetry_Instrumentation ${sonarinstr:0:39}" >> $temp.hdrpar.txt
+echo "Gravity_Instrumentation ${gravimeter:0:39}" >> $temp.hdrpar.txt
+echo "Gravity_Sampling_Rate 0" >> $temp.hdrpar.txt
+echo "Gravity_Digitizing_Rate 0" >> $temp.hdrpar.txt
+echo "Magnetics_Instrumentation ${magnetometer:0:39}" >> $temp.hdrpar.txt
+echo "Magnetics_Digitizing_Rate 0" >> $temp.hdrpar.txt
+echo "Additional_Documentation_3 OBSERVATION LOCATIONS INTERPOLATED FROM GPS VIA LINEAR INTERPOLATION" >> $temp.hdrpar.txt
 
-if [ $vesselcode = "km" ]; then
-    echo "Platform_Name $vessel" >> $temp.hdrpar.txt
-    echo "Gravity_Sampling_Rate 0" >> $temp.hdrpar.txt
-    echo "Gravity_Digitizing_Rate 0" >> $temp.hdrpar.txt
-    echo "Gravity_Instrumentation $gravimeter" >> $temp.hdrpar.txt
-    echo "Bathymetry_Instrumentation $sonar1$sonar2" >> $temp.hdrpar.txt
-    echo "Magnetics_Instrumentation $magnetometer" >> $temp.hdrpar.txt
-    echo "Magnetics_Digitizing_Rate 0" >> $temp.hdrpar.txt
-    echo "Additional_Documentation_3 OBSERVATION LOCATIONS INTERPOLATED FROM GPS VIA LINEAR INTERPOLATION" >> $temp.hdrpar.txt
-
-    if [ $sample2depthtime -eq 0 ]; then
-        if [ -s $procdir/${id}_rmagy_reduced ]; then
-                echo "Additional_Documentation_6 MAGNETICS ${mag_fw} S GAUSSIAN FILTER, DIGITIZED AT $mag_sample_interval S INTERVALS" >> $temp.hdrpar.txt
-        fi
-            if [ -s $procdir/${id}_rgrav_reduced ]; then
-            echo "Additional_Documentation_7 GRAVITY ${gnav_fw} S GAUSSIAN FILTER, DIGITIZED AT $gnav_si S INTERVALS" >> $temp.hdrpar.txt
-        fi
-        else
-            if [ -s $procdir/${id}_rmagy_reduced ]; then
-            echo "Additional_Documentation_6 MAGNETICS ${mag_fw} S GAUSSIAN FILTER, DIGITIZED AT DEPTH TIMES" >> $temp.hdrpar.txt
-        fi
-            if [ -s $procdir/${id}_rgrav_reduced ]; then
-            echo "Additional_Documentation_7 GRAVITY ${gnav_fw} S GAUSSIAN FILTER, DIGITIZED AT DEPTH TIMES" >> $temp.hdrpar.txt
-        fi
+if [ $sample2depthtime -eq 0 ]; then
+    if [ -s $procdir/${id}_rmagy_reduced ]; then
+            echo "Additional_Documentation_6 MAGNETICS ${mag_fw} S GAUSSIAN FILTER, DIGITIZED AT $mag_sample_interval S INTERVALS" >> $temp.hdrpar.txt
     fi
-
-elif [ $vesselcode = "kok" ]; then
-    vessel="KAIMIKAI O KANALOA"
-elif [ $vesselcode = "mw" ]; then
-    vessel="MOANA WAVE"
+        if [ -s $procdir/${id}_rgrav_reduced ]; then
+        echo "Additional_Documentation_7 GRAVITY ${gnav_fw} S GAUSSIAN FILTER, DIGITIZED AT $gnav_si S INTERVALS" >> $temp.hdrpar.txt
+    fi
 else
-    echo "A new vessel code has been encountered."
-    exit
-fi
-
-# Use cruise id as temporary data center file number
-echo "Data_Center_File_Number $outid" >> $temp.hdrpar.txt
-
-#
-if [ "$port1" != "0" ] && [ ${#port1} -le 32 ]; then
-    echo "Port_of_Departure $port1" >> $temp.hdrpar.txt
-fi
-if [ "$port2" != "0" ] && [ ${#port2} -le 32 ]; then
-    echo "Port_of_Arrival $port2" >> $temp.hdrpar.txt
+    if [ -s $procdir/${id}_rmagy_reduced ]; then
+        echo "Additional_Documentation_6 MAGNETICS ${mag_fw} S GAUSSIAN FILTER, DIGITIZED AT DEPTH TIMES" >> $temp.hdrpar.txt
+    fi
+        if [ -s $procdir/${id}_rgrav_reduced ]; then
+        echo "Additional_Documentation_7 GRAVITY ${gnav_fw} S GAUSSIAN FILTER, DIGITIZED AT DEPTH TIMES" >> $temp.hdrpar.txt
+    fi
 fi
 
 if [ -s $outputdatapath/h77/$outid.h77 ]; then
