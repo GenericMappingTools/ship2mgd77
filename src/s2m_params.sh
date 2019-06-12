@@ -38,7 +38,7 @@ bgm3scale="5.07" # BGM3 constants (scale/bias are protected information - actual
 bgm3bias="853500" # BGM3 constants (scale/bias are protected information - actual values differ) [853500]
 
 # Magnetic parameters
-compute_diurnal_correction=0 # 1 to compute diurnal corrections (if mag available) or 0 to skip
+compute_diurnal_correction=1 # 1 to compute diurnal corrections (if mag available) or 0 to skip
 mag_fw=60 # magnetic filter width (sec) [60]
 # University of Hawaii G882 cesium magnetometer specific constants
 g882_min_sigstrength=100 # Arbitrary minimum signal strength for G882 magnetometer
