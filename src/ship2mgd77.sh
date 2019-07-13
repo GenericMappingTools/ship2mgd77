@@ -362,13 +362,28 @@ echo "Port_of_Departure ${port1:0:31}" >> $temp.hdrpar.txt
 echo "Port_of_Arrival ${port2:0:29}" >> $temp.hdrpar.txt
 echo "Data_Center_File_Number ${outid:0:7}" >> $temp.hdrpar.txt # cruise id as temp data center number
 echo "Navigation_Instrumentation ${navinstr:0:39}" >> $temp.hdrpar.txt
+echo "Geodetic_Datum_Position_Determination_Method WGS84/SATELLITE" >> $temp.hdrpar.txt
 sonarinstr="$sonar1$sonar2"
 echo "Bathymetry_Instrumentation ${sonarinstr:0:39}" >> $temp.hdrpar.txt
-echo "Gravity_Instrumentation ${gravimeter:0:39}" >> $temp.hdrpar.txt
-echo "Gravity_Sampling_Rate 0" >> $temp.hdrpar.txt
-echo "Gravity_Digitizing_Rate 0" >> $temp.hdrpar.txt
 echo "Magnetics_Instrumentation ${magnetometer:0:39}" >> $temp.hdrpar.txt
+echo "Gravity_Instrumentation ${gravimeter:0:39}" >> $temp.hdrpar.txt
+echo "Bathymetry_Digitizing_Rate 99" >> $temp.hdrpar.txt
+echo "Bathymetry_Sampling_Rate 1/PING" >> $temp.hdrpar.txt
+echo "Bathymetry_Assumed_Sound_Velocity 1500" >> $temp.hdrpar.txt
+echo "Bathymetry_Datum_Code 00" >> $temp.hdrpar.txt
+echo "Bathymetry_Interpolation_Scheme EXTRACTED FROM MOST VERTICAL SWATH BEAM NO INTERPOLATION" >> $temp.hdrpar.txt
 echo "Magnetics_Digitizing_Rate 0" >> $temp.hdrpar.txt
+echo "Magnetics_Sampling_Rate 01" >> $temp.hdrpar.txt
+echo "Magnetics_Sensor_Tow_Distance 250" >> $temp.hdrpar.txt
+echo "Magnetics_Ref_Field_Code 88" >> $temp.hdrpar.txt
+echo "Magnetics_Ref_Field IGRF-15" >> $temp.hdrpar.txt
+echo "Magnetics_Method_Applying_Res_Field IGRF/RES FIELD COMPUTED PER RECORD BY MGD77LIST" >> $temp.hdrpar.txt
+echo "Gravity_Digitizing_Rate 0" >> $temp.hdrpar.txt
+echo "Gravity_Sampling_Rate 00" >> $temp.hdrpar.txt
+echo "Gravity_Theoretical_Formula_Code 4" >> $temp.hdrpar.txt
+echo "Gravity_Theoretical_Formula IAG SYSTEM 1980" >> $temp.hdrpar.txt
+echo "Gravity_Reference_System_Code 3" >> $temp.hdrpar.txt
+echo "Gravity_Reference_System SYSTEM IGSN 71" >> $temp.hdrpar.txt
 echo "Additional_Documentation_3 OBSERVATION LOCATIONS INTERPOLATED FROM GPS VIA LINEAR INTERPOLATION" >> $temp.hdrpar.txt
 
 if [ $sample2depthtime -eq 0 ]; then
